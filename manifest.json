@@ -1,0 +1,10 @@
+{
+  "id": "chrono-blaster",
+  "name": "Chrono Blaster",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Type /today, /yesterday, or /tomorrow in any note to insert a wikilink to that day's daily note.",
+  "author": "Ali Nawab",
+  "authorUrl": "https://alinawab.com",
+  "isDesktopOnly": false
+}
