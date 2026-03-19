@@ -1,13 +1,13 @@
 # Chrono Blaster
 
-Obsidian plugin. Type `buy groceries /tomorrow` in any note — it schedules the task to that day's daily note without a modal.
+An Obsidian plugin that sends tasks to a daily note without breaking your flow. Type `buy groceries /tomorrow`, select it from the slash menu, done. No modal. No clicking around.
 
-## How it works
+![chrono-blaster demo](https://raw.githubusercontent.com/alinawab/chrono-blaster/main/assets/chrono-blaster.gif)
 
-Write your task inline, then append `/today`, `/yesterday`, or `/tomorrow`. Select the command from the slash menu. The plugin:
+## What it does
 
-- Adds `- [ ] your task` to the target daily note's Tasks section
-- Replaces the trigger with `your task [[date]]` on the current line
+- Adds `- [ ] your task` to the target daily note under the `## Tasks` heading
+- Replaces the trigger on the current line with `your task [[date]]` so you know where it went
 - Creates the daily note if it doesn't exist yet
 
 ## Commands
@@ -15,14 +15,22 @@ Write your task inline, then append `/today`, `/yesterday`, or `/tomorrow`. Sele
 | Trigger | Target |
 |---|---|
 | `/today` | Today's daily note |
-| `/yesterday` | Yesterday's daily note |
 | `/tomorrow` | Tomorrow's daily note |
+| `/yesterday` | Yesterday's daily note |
 
-## Notes
+## Setup
 
 - Daily notes must follow the path `Daily Notes/YYYY-MM-DD.md`
-- Tasks are inserted under a `## Tasks` heading. If none exists, one is appended.
-- Empty line fallback opens a modal prompt.
+- Tasks are inserted under a `## Tasks` heading. If the heading doesn't exist, it's appended.
+- If the current line is empty, a modal prompt opens instead.
+
+## Install
+
+Not yet in the Obsidian community plugin directory. To install manually:
+
+1. Download `main.js` and `manifest.json` from this repo
+2. Create a folder at `.obsidian/plugins/chrono-blaster/` in your vault
+3. Drop both files in and reload Obsidian
 
 ## Author
 
