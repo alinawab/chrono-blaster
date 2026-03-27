@@ -3,9 +3,15 @@
 var obsidian = require('obsidian');
 
 const TRIGGERS = [
-    { label: '/today',     offset: 0  },
-    { label: '/yesterday', offset: -1 },
-    { label: '/tomorrow',  offset: 1  },
+    { label: '/today',     getDate: () => window.moment().format('YYYY-MM-DD') },
+    { label: '/yesterday',  getDate: () => window.moment().subtract(1, 'days').format('YYYY-MM-DD') },
+    { label: '/last month', getDate: () => { const d = window.moment().subtract(1, 'months').startOf('month'); return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
+    { label: '/last year',  getDate: () => { const d = window.moment().subtract(1, 'years').startOf('year');   return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
+    { label: '/tomorrow',  getDate: () => window.moment().add(1, 'days').format('YYYY-MM-DD') },
+    { label: '/next week',  getDate: () => window.moment().add(1, 'weeks').isoWeekday(1).format('YYYY-MM-DD') },
+    { label: '/next month',   getDate: () => { const d = window.moment().add(1, 'months').startOf('month');   return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
+    { label: '/next quarter', getDate: () => { const d = window.moment().add(1, 'quarters').startOf('quarter'); return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
+    { label: '/next year',    getDate: () => { const d = window.moment().add(1, 'years').startOf('year');      return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
 ];
 
 // -------------------------------------------------------
@@ -54,7 +60,8 @@ class TaskModal extends obsidian.Modal {
 
         // 2. Append task to the target daily note's Tasks section
         const filePath = 'Daily Notes/' + this.date + '.md';
-        const taskLine = '- [ ] ' + taskText;
+        const isPast   = window.moment(this.date).isBefore(window.moment(), 'day');
+        const taskLine = (isPast ? '- ' : '- [ ] ') + taskText;
         let file = this.app.vault.getAbstractFileByPath(filePath);
 
         if (!file) {
@@ -104,7 +111,7 @@ class ChronoSuggest extends obsidian.EditorSuggest {
     onTrigger(cursor, editor) {
         const line       = editor.getLine(cursor.line);
         const textBefore = line.substring(0, cursor.ch);
-        const match      = textBefore.match(/\/(\w*)$/);
+        const match      = textBefore.match(/\/(\w[\w ]*|)$/);
         if (!match) return null;
 
         const triggerText = match[0];
@@ -117,7 +124,7 @@ class ChronoSuggest extends obsidian.EditorSuggest {
     }
 
     renderSuggestion(item, el) {
-        const date = window.moment().add(item.offset, 'days').format('YYYY-MM-DD');
+        const date = item.getDate();
 
         const left = el.createEl('span');
         left.setText(item.label);
@@ -130,7 +137,7 @@ class ChronoSuggest extends obsidian.EditorSuggest {
 
     selectSuggestion(item) {
         if (!this.context) return;
-        const date   = window.moment().add(item.offset, 'days').format('YYYY-MM-DD');
+        const date   = item.getDate();
         const editor = this.context.editor;
         const line   = editor.getLine(this.context.start.line);
         const taskText = line.substring(0, this.context.start.ch).trim();
@@ -159,13 +166,13 @@ class ChronoBlasterPlugin extends obsidian.Plugin {
         // typed "/tomorrow" before calling editorCallback, leaving "buy groceries "
         // on the line. We use that as the task text.
         for (const t of TRIGGERS) {
-            const offset = t.offset;
-            const label  = t.label.replace('/', '');
+            const getDate = t.getDate;
+            const label   = t.label.replace('/', '');
             this.addCommand({
                 id: 'chrono-' + label,
                 name: 'Insert ' + label,
                 editorCallback: (editor) => {
-                    const date     = window.moment().add(offset, 'days').format('YYYY-MM-DD');
+                    const date     = getDate();
                     const cursor   = editor.getCursor();
                     // Strip leading list/checkbox marker (e.g. "- [ ] buy groceries" → "buy groceries")
                     const taskText = editor.getLine(cursor.line).trim().replace(/^-\s+(\[.\]\s*)?/, '');

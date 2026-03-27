@@ -9,6 +9,7 @@ An Obsidian plugin that sends tasks to a daily note without breaking your flow. 
 - Adds `- [ ] your task` to the target daily note under the `## Tasks` heading
 - Replaces the trigger on the current line with `your task [[date]]` so you know where it went
 - Creates the daily note if it doesn't exist yet
+- Past-date triggers insert a plain bullet `- task` instead of a checkbox, since the time has already passed
 
 ## Commands
 
@@ -16,7 +17,13 @@ An Obsidian plugin that sends tasks to a daily note without breaking your flow. 
 |---|---|
 | `/today` | Today's daily note |
 | `/tomorrow` | Tomorrow's daily note |
+| `/next week` | Monday of next week |
+| `/next month` | First Monday of next month |
+| `/next quarter` | First Monday of next quarter |
+| `/next year` | First Monday of next year |
 | `/yesterday` | Yesterday's daily note |
+| `/last month` | First Monday of last month |
+| `/last year` | First Monday of last year |
 
 ## Setup
 
