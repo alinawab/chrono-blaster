@@ -19,6 +19,27 @@ function parseDays(str) {
     return WORD_TO_NUM[str.toLowerCase().trim()] || null;
 }
 
+// Scans a line for the first known trigger and returns its position + getDate.
+// Static triggers are checked longest-first to avoid prefix collisions.
+// Returns { start, end, getDate } or null.
+function findTriggerInLine(line) {
+    const sorted = [...TRIGGERS].sort((a, b) => b.label.length - a.label.length);
+    for (const t of sorted) {
+        const idx = line.indexOf(t.label);
+        if (idx !== -1) return { start: idx, end: idx + t.label.length, getDate: t.getDate };
+    }
+    const m = line.match(/\/in\s+([\w,-]+)(?:\s+days?)?/i);
+    if (m) {
+        const days = parseDays(m[1]);
+        if (days !== null) return {
+            start: m.index,
+            end: m.index + m[0].length,
+            getDate: () => window.moment().add(days, 'days').format('YYYY-MM-DD'),
+        };
+    }
+    return null;
+}
+
 const TRIGGERS = [
     { label: '/today',     getDate: () => window.moment().format('YYYY-MM-DD') },
     { label: '/yesterday',  getDate: () => window.moment().subtract(1, 'days').format('YYYY-MM-DD') },
@@ -287,6 +308,35 @@ class ChronoBlasterPlugin extends obsidian.Plugin {
                 },
             });
         }
+
+        // Process current line — voice dictation flow
+        // Scans the line for a /trigger, applies it silently (no popup).
+        // Hotkey default: Ctrl+Option+Space (set in Obsidian hotkey settings)
+        this.addCommand({
+            id:   'chrono-process-line',
+            name: 'Process current line',
+            hotkeys: [{ modifiers: ['Ctrl', 'Alt'], key: ' ' }],
+            editorCallback: (editor) => {
+                const cursor = editor.getCursor();
+                const line   = editor.getLine(cursor.line);
+                const found  = findTriggerInLine(line);
+                if (!found) return;
+
+                const date     = found.getDate();
+                const taskText = (line.substring(0, found.start) + line.substring(found.end))
+                    .trim()
+                    .replace(/^-\s+(\[.\]\s*)?/, '');
+                const replaceStart = { line: cursor.line, ch: found.start };
+                const replaceEnd   = { line: cursor.line, ch: found.end };
+                const modal = new TaskModal(this.app, date, editor, replaceStart, replaceEnd);
+
+                if (taskText) {
+                    modal.apply(taskText);
+                } else {
+                    modal.open();
+                }
+            },
+        });
 
         // "in N days" — opens a two-field modal (days + task)
         this.addCommand({
