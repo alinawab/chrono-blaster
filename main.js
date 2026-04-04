@@ -26,6 +26,7 @@ const TRIGGERS = [
     { label: '/last year',  getDate: () => { const d = window.moment().subtract(1, 'years').startOf('year');   return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
     { label: '/tomorrow',  getDate: () => window.moment().add(1, 'days').format('YYYY-MM-DD') },
     { label: '/next week',  getDate: () => window.moment().add(1, 'weeks').isoWeekday(1).format('YYYY-MM-DD') },
+    { label: '/in a week',  getDate: () => window.moment().add(1, 'weeks').isoWeekday(1).format('YYYY-MM-DD') },
     { label: '/next month',   getDate: () => { const d = window.moment().add(1, 'months').startOf('month');   return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
     { label: '/next quarter', getDate: () => { const d = window.moment().add(1, 'quarters').startOf('quarter'); return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
     { label: '/next year',    getDate: () => { const d = window.moment().add(1, 'years').startOf('year');      return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
@@ -74,6 +75,13 @@ class TaskModal extends obsidian.Modal {
     async apply(taskText) {
         // 1. Insert wikilink at cursor in current note
         this.editor.replaceRange('[[' + this.date + ']]', this.replaceStart, this.replaceEnd);
+
+        // Ensure the line is a checkbox task
+        const lineNum = this.replaceStart.line;
+        const line    = this.editor.getLine(lineNum);
+        if (!/^\s*- \[.\]/.test(line)) {
+            this.editor.setLine(lineNum, '- [ ] ' + line.trimStart());
+        }
 
         // 2. Append task to the target daily note's Tasks section
         const filePath = 'Daily Notes/' + this.date + '.md';
