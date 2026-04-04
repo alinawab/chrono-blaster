@@ -2,6 +2,23 @@
 
 var obsidian = require('obsidian');
 
+const WORD_TO_NUM = {
+    'one':1,'two':2,'three':3,'four':4,'five':5,'six':6,'seven':7,
+    'eight':8,'nine':9,'ten':10,'eleven':11,'twelve':12,'thirteen':13,
+    'fourteen':14,'fifteen':15,'sixteen':16,'seventeen':17,'eighteen':18,
+    'nineteen':19,'twenty':20,'twenty-one':21,'twenty-two':22,
+    'twenty-three':23,'twenty-four':24,'twenty-five':25,'twenty-six':26,
+    'twenty-seven':27,'twenty-eight':28,'twenty-nine':29,'thirty':30,
+    'thirty-one':31,
+};
+
+function parseDays(str) {
+    const cleaned = str.replace(/,/g, '');
+    const n = parseInt(cleaned, 10);
+    if (!isNaN(n) && n > 0) return n;
+    return WORD_TO_NUM[str.toLowerCase().trim()] || null;
+}
+
 const TRIGGERS = [
     { label: '/today',     getDate: () => window.moment().format('YYYY-MM-DD') },
     { label: '/yesterday',  getDate: () => window.moment().subtract(1, 'days').format('YYYY-MM-DD') },
@@ -120,7 +137,23 @@ class ChronoSuggest extends obsidian.EditorSuggest {
     }
 
     getSuggestions(context) {
-        return TRIGGERS.filter(t => t.label.startsWith(context.query));
+        const q = context.query;
+        const results = TRIGGERS.filter(t => t.label.startsWith(q));
+
+        // Dynamic "/in N days" — matches numeric or word-form day counts
+        // e.g. /in 7, /in 7 days, /in seven, /in seven days, /in twenty-two days
+        const m = q.match(/^\/in\s+([\w-]+)(?:\s+days?)?$/i);
+        if (m) {
+            const days = parseDays(m[1]);
+            if (days !== null) {
+                results.push({
+                    label: '/in ' + m[1].toLowerCase() + ' days',
+                    getDate: () => window.moment().add(days, 'days').format('YYYY-MM-DD'),
+                });
+            }
+        }
+
+        return results;
     }
 
     renderSuggestion(item, el) {
@@ -151,6 +184,65 @@ class ChronoSuggest extends obsidian.EditorSuggest {
             // Nothing on the line — fall back to modal prompt
             modal.open();
         }
+    }
+}
+
+// -------------------------------------------------------
+// InDaysModal — command palette entry for "in N days"
+// -------------------------------------------------------
+class InDaysModal extends obsidian.Modal {
+    constructor(app, editor, prefillTask = '') {
+        super(app);
+        this.editor      = editor;
+        this.prefillTask = prefillTask;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+
+        const hint = contentEl.createEl('p', { text: 'Schedule a task N days from today' });
+        hint.style.cssText = 'color:var(--text-muted);margin-bottom:12px;font-size:0.85em;';
+
+        const daysInput = contentEl.createEl('input', {
+            type: 'text',
+            placeholder: 'Days from today (e.g. 7 or seven)',
+        });
+        daysInput.style.cssText = 'width:100%;padding:6px 8px;font-size:1em;margin-bottom:8px;background:var(--background-modifier-form-field);border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);';
+
+        const taskInput = contentEl.createEl('input', {
+            type: 'text',
+            placeholder: 'Task description...',
+        });
+        taskInput.value = this.prefillTask;
+        taskInput.style.cssText = 'width:100%;padding:6px 8px;font-size:1em;background:var(--background-modifier-form-field);border:1px solid var(--background-modifier-border);border-radius:4px;color:var(--text-normal);';
+
+        daysInput.focus();
+
+        const submit = () => {
+            const days = parseDays(daysInput.value.trim());
+            const task = taskInput.value.trim();
+            if (!days) { daysInput.style.borderColor = 'var(--color-red)'; daysInput.focus(); return; }
+            if (!task)  { taskInput.style.borderColor  = 'var(--color-red)'; taskInput.focus();  return; }
+            const date   = window.moment().add(days, 'days').format('YYYY-MM-DD');
+            const cursor = this.editor.getCursor();
+            this.close();
+            new TaskModal(this.app, date, this.editor, cursor, cursor).apply(task);
+        };
+
+        daysInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab')    { e.preventDefault(); taskInput.focus(); }
+            if (e.key === 'Enter')  submit();
+            if (e.key === 'Escape') this.close();
+        });
+        taskInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter')  submit();
+            if (e.key === 'Escape') this.close();
+        });
+    }
+
+    onClose() {
+        this.contentEl.empty();
     }
 }
 
@@ -187,6 +279,17 @@ class ChronoBlasterPlugin extends obsidian.Plugin {
                 },
             });
         }
+
+        // "in N days" — opens a two-field modal (days + task)
+        this.addCommand({
+            id:   'chrono-in-n-days',
+            name: 'in N days',
+            editorCallback: (editor) => {
+                const cursor   = editor.getCursor();
+                const taskText = editor.getLine(cursor.line).trim().replace(/^-\s+(\[.\]\s*)?/, '');
+                new InDaysModal(this.app, editor, taskText).open();
+            },
+        });
 
         console.log('Chrono Blaster loaded');
     }
