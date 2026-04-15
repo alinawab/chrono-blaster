@@ -40,6 +40,17 @@ function findTriggerInLine(line) {
     return null;
 }
 
+// Returns a getDate fn for the next occurrence of an ISO weekday (1=Mon … 7=Sun).
+// If that day is today it stays today; if it already passed this week, jumps to next week.
+function nextWeekday(dayNum) {
+    return () => {
+        const today  = window.moment();
+        const target = window.moment().isoWeekday(dayNum);
+        if (target.isBefore(today, 'day')) target.add(1, 'weeks');
+        return target.format('YYYY-MM-DD');
+    };
+}
+
 const TRIGGERS = [
     { label: '/today',     getDate: () => window.moment().format('YYYY-MM-DD') },
     { label: '/yesterday',  getDate: () => window.moment().subtract(1, 'days').format('YYYY-MM-DD') },
@@ -51,6 +62,13 @@ const TRIGGERS = [
     { label: '/next month',   getDate: () => { const d = window.moment().add(1, 'months').startOf('month');   return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
     { label: '/next quarter', getDate: () => { const d = window.moment().add(1, 'quarters').startOf('quarter'); return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
     { label: '/next year',    getDate: () => { const d = window.moment().add(1, 'years').startOf('year');      return (d.isoWeekday() === 1 ? d : d.isoWeekday(8)).format('YYYY-MM-DD'); } },
+    { label: '/monday',    getDate: nextWeekday(1) },
+    { label: '/tuesday',   getDate: nextWeekday(2) },
+    { label: '/wednesday', getDate: nextWeekday(3) },
+    { label: '/thursday',  getDate: nextWeekday(4) },
+    { label: '/friday',    getDate: nextWeekday(5) },
+    { label: '/saturday',  getDate: nextWeekday(6) },
+    { label: '/sunday',    getDate: nextWeekday(7) },
 ];
 
 // -------------------------------------------------------
